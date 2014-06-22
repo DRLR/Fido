@@ -17,57 +17,19 @@ The report consists of three parts:
 
 ## Data Processing and Filtering
 ### Loading the needed Libraries
-
-```r
+```{r }
 library(caret)
-```
-
-```
-## Warning: package 'caret' was built under R version 3.0.3
-```
-
-```
-## Loading required package: lattice
-```
-
-```
-## Warning: package 'lattice' was built under R version 3.0.3
-```
-
-```
-## Loading required package: ggplot2
-```
-
-```
-## Warning: package 'ggplot2' was built under R version 3.0.3
-```
-
-```r
 library(randomForest)
-```
-
-```
-## Warning: package 'randomForest' was built under R version 3.0.3
-```
-
-```
-## randomForest 4.6-7
-## Type rfNews() to see new features/changes/bug fixes.
-```
-
-```r
 library(ggplot2)
 ```
 ### Loading the Data
-
-```r
+```{r, cache=TRUE}
 TrainingSet <- read.csv("pml-training.csv", header=T, sep=",")
 TestingSet <- read.csv("pml-testing.csv", header=T, sep=",")
 ```
 
 ### Check training and test set for missing Data 
-
-```r
+```{r, cache=TRUE}
 TestCount <- apply(is.na(TestingSet), 2, sum)
 TestRatio <- 100*TestCount/nrow(TestingSet)
 TestResults <- data.frame(cbind(TestCount, TestRatio))
@@ -75,15 +37,9 @@ TestNames <- rownames(TestResults[TestResults$TestRatio>90,])
 head(TestNames)
 ```
 
-```
-## [1] "kurtosis_roll_belt"   "kurtosis_picth_belt"  "kurtosis_yaw_belt"   
-## [4] "skewness_roll_belt"   "skewness_roll_belt.1" "skewness_yaw_belt"
-```
-
 Based on the analysis, we use only predictors with more than 90% completeness.
 
-
-```r
+```{r}
 TrainCount <- apply(is.na(TrainingSet), 2, sum)
 TrainRatio <- 100*TrainCount/nrow(TrainingSet)
 TrainResults <- data.frame(cbind(TrainCount, TrainRatio))
@@ -91,16 +47,10 @@ TrainNames <- rownames(TrainResults[TrainResults$TrainRatio>95,])
 Names <- union(TrainNames, TestNames)
 head(Names)
 ```
-
-```
-## [1] "max_roll_belt"        "max_picth_belt"       "min_roll_belt"       
-## [4] "min_pitch_belt"       "amplitude_roll_belt"  "amplitude_pitch_belt"
-```
 Based on the analysis, we use only predictors with more than 95% completeness.
 
 ### Subset of Variables
-
-```r
+```{r}
 TrainVars <- names(TrainingSet) %in% Names
 TestVars <- names(TestingSet) %in% Names
 
@@ -110,8 +60,7 @@ NewTestSet <- TestingSet[!TestVars]
 
 
 ### Remove variables with a value near zero
-
-```r
+```{r, cache=TRUE}
 nzvTrain <- nearZeroVar(NewTrainSet, saveMetrics = FALSE)
 nzvTest <- nearZeroVar(NewTestSet, saveMetrics = FALSE)
 Training <- NewTrainSet[,-nzvTrain]
@@ -122,102 +71,75 @@ Testing <- NewTestSet[,-nzvTest]
 
 ### Exploratory Data Analysis
 
-
-```r
+```{r, cache=TRUE}
 qplot(Training$raw_timestamp_part_1, col=Training$classe, geom = "density")
-```
-
-![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-71.png) 
-
-```r
 hist(Training$raw_timestamp_part_1, breaks=200, col="black")
 ```
 
-![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-72.png) 
-
 ### Combine Data
-
-```r
+```{r}
 Training$Mark <- "Train"
 Testing$Mark <- "Test"
 colnames(Testing) <- colnames(Training)
 Data <- rbind(Training, Testing)
-```
-
-```
-## Warning: invalid factor level, NA generated
-```
-
-```r
 Data <- Data[,2:ncol(Data)]
 
 abandonNameList <- c("raw_timestamp_part_2")
 ```
 ### Preparation
-
-```r
+```{r, cache=TRUE}
 Data$raw_timestamp_part_1 <- Data$raw_timestamp_part_1/100000
 Combine <- cut(Data$raw_timestamp_part_1, c(min(Data$raw_timestamp_part_1), 13226, 13227,13229, max(Data$raw_timestamp_part_1)), order=T)
 ```
 ### Steps needed for Random Forest
-
-```r
+```{r, cache=TRUE}
 Data$RTSP1 <- Combine
 abandonNameList <- union(abandonNameList, "raw_timestamp_part_1")
 ```
 #### Categories (2): "roll_belt"
-
-```r
+```{r, cache=TRUE}
 Data$rollBeltCut <- cut(Data$roll_belt,c(min(Data$roll_belt), 72, max(Data$roll_belt)))
 abandonNameList <- union(abandonNameList, "roll_belt")
 ```
 #### Categories (4): "pitch_belt"
-
-```r
+```{r, cache=TRUE}
 Data$pitchBeltCut <- cut(Data$pitch_belt, c(min(Data$pitch_belt), -18, 12, 20, max(Data$pitch_belt)))
 abandonNameList <- union(abandonNameList, "pitch_belt")
 ```
 #### Categories (3): "yaw_belt"
-
-```r
+```{r, cache=TRUE}
 Data$yawBeltCut <- cut(Data$yaw_belt, c(min(Data$yaw_belt), -45, 90, max(Data$yaw_belt)))
 abandonNameList <- union(abandonNameList, "yaw_belt")
 ```
 #### Categories (2): "total_accel_belt"
-
-```r
+```{r, cache=TRUE}
 Data$totalAccelBeltCut <- cut(Data$total_accel_belt, c(min(Data$total_accel_belt), 12, max(Data$total_accel_belt)))
 abandonNameList <- union(abandonNameList, "total_accel_belt")
 ```
 #### Categories (2): "accel_belt_x"
-
-```r
+```{r, cache=TRUE}
 Data$accelBeltxCut <- cut(Data$accel_belt_x, c(min(Data$accel_belt_x), 25, max(Data$accel_belt_x)))
 abandonNameList <- union(abandonNameList, "accel_belt_x")
 ```
 #### Categories (1): "magnet_dumbbell_x" 
-
-```r
+```{r, cache=TRUE}
 Data$magnetDumbbellxCut <- cut(Data$magnet_dumbbell_x, c(min(Data$magnet_dumbbell_x), 0, max(Data$magnet_dumbbell_x)))
 abandonNameList <- union(abandonNameList, "magnet_dumbbell_x")
 ```
 #### Categories (1): "magnet_dumbbell_y" 
-
-```r
+```{r, cache=TRUE}
 Data$magnetDumbbellyCut <- cut(Data$magnet_dumbbell_y, c(min(Data$magnet_dumbbell_y), -100, max(Data$magnet_dumbbell_y)))
 abandonNameList <- union(abandonNameList, "magnet_dumbbell_y")
 ```
 #### Categories (1): "magnet_dumbbell_z"
-
-```r
+```{r, cache=TRUE}
 Data$magnetDumbbellzCut <- cut(Data$magnet_dumbbell_z, c(min(Data$magnet_dumbbell_z), 200, max(Data$magnet_dumbbell_z)))
 abandonNameList <- union(abandonNameList, "magnet_dumbbell_z")
 myvars <- names(Data) %in% abandonNameList
 TotalData <- Data[!myvars]
 ```
 ### Final Set for Model Building
-
-```r
+```{r, cache=TRUE}
 training <- subset(TotalData, TotalData$Mark=="Train", select=-Mark)
 training <- na.omit(training)
 testing <- subset(TotalData, TotalData$Mark=="Test", select=-Mark)
@@ -226,32 +148,12 @@ PredictorNames <- names(training)[-48]
 ## Model Building
 
 ### Build Random Forest Model
-
-```r
+```{r, cache=TRUE}
 Model <- randomForest(training[,PredictorNames],training[,"classe"], importance=T, ntree=100)
 ```
 ### Show the Random Forest Model
-
-```r
+```{r}
 print(Model)
-```
-
-```
-## 
-## Call:
-##  randomForest(x = training[, PredictorNames], y = training[, "classe"],      ntree = 100, importance = T) 
-##                Type of random forest: classification
-##                      Number of trees: 100
-## No. of variables tried at each split: 7
-## 
-##         OOB estimate of  error rate: 0.23%
-## Confusion matrix:
-##      A    B    C    D    E class.error
-## A 5575    1    1    0    0   0.0003586
-## B    4 3789    1    0    0   0.0013179
-## C    0   10 3403    8    0   0.0052616
-## D    0    0   16 3198    1   0.0052877
-## E    0    0    0    4 3598   0.0011105
 ```
 ### Estimated Error 
 - The estimated error of the model is only 0.24%. 
